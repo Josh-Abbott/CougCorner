@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
+import Providers from "./components/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,17 +19,22 @@ export const metadata: Metadata = {
   description: "WSU Athletics discussion forum",
 };
 
-export default function RootLayout({
+function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
       <body className="bg-gray-100 text-gray-900 min-h-screen">
-        <Navbar />
-        <main className="max-w-4xl mx-auto p-6">{children}</main>
+        <Providers>
+          <Navbar />
+          <main className="max-w-4xl mx-auto p-6">{children}</main>
+        </Providers>
       </body>
     </html>
   );
 }
+
+export default RootLayout
+
