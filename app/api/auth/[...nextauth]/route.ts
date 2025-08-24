@@ -49,17 +49,26 @@ export const authOptions: AuthOptions = {
     signIn: "/login",
   },
   callbacks: {
-    // user object returned from authorize
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.email = user.email;
+
+        // make sure user exists in custom "users" table
+        const { error } = await supabase
+          .from("users")
+          .upsert([{ id: user.id, email: user.email }], { onConflict: "id" });
+
+        if (error) {
+          console.error("Error syncing user:", error.message);
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.email = token.email as string;
       }
       return session;
     },

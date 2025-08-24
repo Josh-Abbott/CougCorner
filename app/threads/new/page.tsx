@@ -1,9 +1,12 @@
-import React from 'react'
+import ThreadForm from "@/app/components/ThreadForm";
 
-function page() {
+function NewThread() {
   return (
-    <div>page</div>
-  )
+    <main className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Create New Thread</h1>
+      <ThreadForm />
+    </main>
+  );
 }
 
-export default page
+export default NewThread
