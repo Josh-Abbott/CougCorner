@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { revalidateTag } from "next/cache";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,11 +14,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { title, content } = await req.json();
+  const { thread_id, content } = await req.json();
 
-  const { data: thread, error } = await supabase
-    .from("threads")
-    .insert([{ title, body: content, author_id: session.user.id }])
+  if (!thread_id || !content) {
+    return NextResponse.json(
+      { error: "Missing thread_id or content" },
+      { status: 400 }
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("posts")
+    .insert([{ thread_id, author_id: session.user.id, content }])
     .select()
     .single();
 
@@ -28,7 +34,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  revalidateTag("threads"); // ?
-
-  return NextResponse.json({ id: thread.id });
+  return NextResponse.json(data);
 }

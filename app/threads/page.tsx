@@ -1,19 +1,14 @@
-import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 async function ThreadsPage() {
-  const { data: threads, error } = await supabase
-    .from("threads")
-    .select("id, title, created_at")
-    .order("created_at", { ascending: false })
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/threads/list`,
+    {
+      next: { tags: ["threads"] },
+    }
+  );
 
-  if (error) {
-    console.error(error);
+  if (!res.ok) {
     return (
       <section className="bg-white shadow rounded-lg p-6">
         <h1 className="text-2xl font-bold mb-4">Threads</h1>
@@ -22,12 +17,22 @@ async function ThreadsPage() {
     );
   }
 
-  const thread = threads?.[0];
+  const threads: { id: string; title: string; created_at: string }[] =
+    await res.json();
 
   return (
     <section className="bg-white shadow rounded-lg p-6">
-      <h1 className="text-2xl font-bold mb-4">Threads</h1>
-      {threads && threads.length > 0 ? (
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Threads</h1>
+        <Link
+          href="/threads/new"
+          className="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition"
+        >
+          New
+        </Link>
+      </div>
+
+      {threads.length > 0 ? (
         <ul className="space-y-3">
           {threads.map((thread) => (
             <li key={thread.id}>
@@ -50,4 +55,4 @@ async function ThreadsPage() {
   );
 }
 
-export default ThreadsPage
+export default ThreadsPage;

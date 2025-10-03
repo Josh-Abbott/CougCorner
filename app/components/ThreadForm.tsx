@@ -42,7 +42,7 @@ function ThreadForm() {
         />
       </div>
       <div>
-        <label className="block mb-1 font-medium">Content</label>
+        <label className="block mb-1 font-medium">Body</label>
         <textarea
           className="w-full p-2 border rounded"
           value={content}
