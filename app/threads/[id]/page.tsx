@@ -1,17 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
-import ReplyForm from "@/app/components/ReplyForm";
+import ReplySection from "@/app/components/ReplySection";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-async function ThreadPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const { id: threadId } = params;
+export default async function ThreadPage({params,}: {params: Promise<{ id: string }>;}) 
+{
+  const { id: threadId } = await params;
+  const session = await getServerSession(authOptions);
 
   const { data: thread } = await supabase
     .from("threads")
@@ -19,13 +19,22 @@ async function ThreadPage({
     .eq("id", threadId)
     .single();
 
-  const { data: posts } = await supabase
-    .from("posts")
-    .select("id, content, author_id, created_at")
-    .eq("thread_id", threadId)
-    .order("created_at", { ascending: true });
+  if (!thread) {
+    return <p>Thread not found</p>;
+  }
 
-  if (!thread) return <p>Thread not found</p>;
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/posts/${threadId}`,
+    {
+      next: { tags: [`posts-${threadId}`] },
+    }
+  );
+
+  if (!res.ok) {
+    return <p className="text-red-600 text-sm">Error loading replies.</p>;
+  }
+
+  const posts = await res.json();
 
   return (
     <section className="bg-white shadow rounded-lg p-6">
@@ -33,15 +42,19 @@ async function ThreadPage({
       <p className="text-sm text-gray-500 mb-4">
         by {thread.author_id} on {new Date(thread.created_at).toLocaleString()}
       </p>
+
       <div className="mb-6 p-3 border rounded bg-gray-50">
         <p className="text-gray-800 whitespace-pre-wrap">{thread.body}</p>
       </div>
 
       <h2 className="text-lg font-semibold mb-2">Replies</h2>
 
-      <ReplyForm threadId={thread.id} initialPosts={posts ?? []} />
+      <ReplySection
+        threadId={thread.id}
+        initialPosts={posts ?? []}
+        isAuthenticated={!!session}
+      />
     </section>
   );
 }
 
-export default ThreadPage

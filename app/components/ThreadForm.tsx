@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-function ThreadForm() {
+export default function ThreadForm() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,6 +24,8 @@ function ThreadForm() {
     if (res.ok) {
       const data = await res.json();
       router.push(`/threads/${data.id}`);
+    } else if (res.status === 401) {
+      alert("You must be signed in to create a thread");
     } else {
       alert("Failed to create thread");
     }
@@ -60,5 +62,3 @@ function ThreadForm() {
     </form>
   );
 }
-
-export default ThreadForm

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { revalidateTag } from "next/cache";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +16,6 @@ export async function POST(req: Request) {
   }
 
   const { thread_id, content } = await req.json();
-
   if (!thread_id || !content) {
     return NextResponse.json(
       { error: "Missing thread_id or content" },
@@ -33,6 +33,8 @@ export async function POST(req: Request) {
     console.error(error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  revalidateTag(`posts-${thread_id}`);
 
   return NextResponse.json(data);
 }
