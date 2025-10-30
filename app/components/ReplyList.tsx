@@ -26,4 +26,3 @@ export default function ReplyList({ posts }: { posts: Post[] }) {
         </div>
     );
 }
-
