@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { Post } from "@/types/forum";
 
-export default function ReplyForm({ threadId, onReplyAdded, }: { threadId: string; onReplyAdded?: (reply: Post) => void; }) {
+export default function ReplyForm({threadId,onReplyPosted,}: {threadId: string;onReplyPosted?: () => void;}) {
     const [content, setContent] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
@@ -21,17 +20,8 @@ export default function ReplyForm({ threadId, onReplyAdded, }: { threadId: strin
 
             if (!res.ok) throw new Error("Failed to post reply");
 
-            const data = await res.json();
-
-            // build reply optimistically
-            const newReply: Post = {
-                id: data.id || crypto.randomUUID(),
-                content,
-                author_id: data.author_id || "You",
-                created_at: new Date().toISOString(),
-            };
-
-            onReplyAdded?.(newReply);
+            // success → trigger a refresh via parent
+            onReplyPosted?.();
             setContent("");
         } catch (err) {
             console.error(err);
@@ -60,3 +50,4 @@ export default function ReplyForm({ threadId, onReplyAdded, }: { threadId: strin
         </form>
     );
 }
+

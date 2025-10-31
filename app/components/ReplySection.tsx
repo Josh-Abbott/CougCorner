@@ -14,7 +14,7 @@ interface ReplySectionProps {
     initialPage: number;
 }
 
-export default function ReplySection({threadId, initialPosts, isAuthenticated, totalPages: initialTotalPages, initialPage,}: ReplySectionProps) {
+export default function ReplySection({threadId,initialPosts,isAuthenticated,totalPages: initialTotalPages,initialPage,}: ReplySectionProps) {
     const [posts, setPosts] = useState<Post[]>(initialPosts);
     const [currentPage, setCurrentPage] = useState(initialPage);
     const [totalPages, setTotalPages] = useState(initialTotalPages);
@@ -26,8 +26,8 @@ export default function ReplySection({threadId, initialPosts, isAuthenticated, t
         try {
             const res = await fetch(`/api/posts/${threadId}?page=${page}`);
             if (!res.ok) throw new Error("Failed to fetch replies");
-
             const data = await res.json();
+
             setPosts(data.posts);
             setTotalPages(data.totalPages);
             setCurrentPage(page);
@@ -40,8 +40,20 @@ export default function ReplySection({threadId, initialPosts, isAuthenticated, t
     };
 
     // Refetch after a new reply is added
-    const handleReplyAdded = async () => {
-        await fetchReplies(totalPages);
+    const handleReplyPosted = async () => {
+        try {
+            // determine if a new page was added
+            const metaRes = await fetch(`/api/posts/${threadId}?page=1`);
+            const metaData = await metaRes.json();
+            const newTotalPages = metaData.totalPages;
+            await fetchReplies(newTotalPages);
+
+            setTimeout(() => {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+            }, 200);
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     useEffect(() => {
@@ -65,11 +77,9 @@ export default function ReplySection({threadId, initialPosts, isAuthenticated, t
             />
 
             {isAuthenticated ? (
-                <ReplyForm threadId={threadId} onReplyAdded={handleReplyAdded} />
+                <ReplyForm threadId={threadId} onReplyPosted={handleReplyPosted} />
             ) : (
-                <p className="text-gray-500 mt-4">
-                    Sign in to reply to this thread.
-                </p>
+                <p className="text-gray-500 mt-4">Sign in to reply to this thread.</p>
             )}
         </div>
     );
