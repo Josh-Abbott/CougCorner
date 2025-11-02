@@ -9,10 +9,11 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export default async function ThreadPage({params, searchParams,}: {params: Promise<{ id: string }>; searchParams?: { page?: string };}) {
-    const { id: threadId } = await params;
-    const session = await getServerSession(authOptions);
+export default async function ThreadPage(props: {params: Promise<{ id: string }>;searchParams: Promise<{ page?: string }>;}) {
+    const { id: threadId } = await props.params;
+    const searchParams = await props.searchParams;
 
+    const session = await getServerSession(authOptions);
     const currentPage = parseInt(searchParams?.page || "1", 10);
 
     const { data: thread } = await supabase
@@ -23,7 +24,7 @@ export default async function ThreadPage({params, searchParams,}: {params: Promi
 
     if (!thread) return <p>Thread not found</p>;
 
-    // paginated replies
+    // Paginated replies
     const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/posts/${threadId}?page=${currentPage}`,
         { next: { tags: [`posts-${threadId}`] } }
@@ -58,3 +59,4 @@ export default async function ThreadPage({params, searchParams,}: {params: Promi
         </section>
     );
 }
+

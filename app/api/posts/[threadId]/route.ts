@@ -8,10 +8,11 @@ const supabase = createClient(
 
 const PAGE_SIZE = 5;
 
-export async function GET(req: Request, { params }: { params: { threadId: string } }) {
-    const { threadId } = params;
+export async function GET(req: Request, props: { params: Promise<{ threadId: string }> }) {
+    const { threadId } = await props.params;
+
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
+    const page = parseInt(searchParams.get("page") || "1", 10);
 
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
@@ -23,9 +24,9 @@ export async function GET(req: Request, { params }: { params: { threadId: string
         .order("created_at", { ascending: true })
         .range(from, to);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error)
+        return NextResponse.json({ error: error.message }, { status: 500 });
 
     const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
-
     return NextResponse.json({ posts: data, totalPages });
 }
