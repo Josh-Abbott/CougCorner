@@ -9,7 +9,8 @@ const supabase = createClient(
 export async function GET(req: Request, { params }: { params: { id: string } }) {
     const threadId = params.id;
 
-    const { data, error } = await supabase
+    // Fetch the thread and its posts
+    const { data: thread, error: threadError } = await supabase
         .from("threads")
         .select(`
       id,
@@ -27,10 +28,47 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         .eq("id", threadId)
         .single();
 
-    if (error) {
-        console.error(error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    if (threadError) {
+        console.error("Error fetching thread:", threadError);
+        return NextResponse.json({ error: threadError.message }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    // Fetch thread author's username
+    const { data: threadAuthor, error: threadAuthorError } = await supabase
+        .from("users")
+        .select("username")
+        .eq("id", thread.author_id)
+        .single();
+
+    if (threadAuthorError) {
+        console.error("Error fetching thread author username:", threadAuthorError);
+    }
+
+    // Fetch all post authors' usernames
+    const postAuthorIds = [...new Set(thread.posts.map((p: any) => p.author_id))];
+
+    const { data: postAuthors, error: postAuthorsError } = await supabase
+        .from("users")
+        .select("id, username")
+        .in("id", postAuthorIds);
+
+    if (postAuthorsError) {
+        console.error("Error fetching post author usernames:", postAuthorsError);
+    }
+
+    const authorMap = Object.fromEntries(
+        (postAuthors || []).map((u: any) => [u.id, u.username])
+    );
+
+    const postsWithUsernames = thread.posts.map((p: any) => ({
+        ...p,
+        username: authorMap[p.author_id] || "Unknown",
+    }));
+
+    // Return all of the stuff 
+    return NextResponse.json({
+        ...thread,
+        username: threadAuthor?.username || "Unknown",
+        posts: postsWithUsernames,
+    });
 }

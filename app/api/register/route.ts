@@ -3,42 +3,69 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY! // SERVICE ROLE
+    process.env.SUPABASE_SERVICE_ROLE_KEY! // service role key
 );
 
 export async function POST(req: Request) {
     try {
-        const { email, password } = await req.json();
+        const { email, password, username } = await req.json();
 
-        if (!email || !password) {
-            return NextResponse.json({ error: "Email and password required" }, { status: 400 });
+        if (!email || !password || !username) {
+            return NextResponse.json({ error: "All fields are required." }, { status: 400 });
         }
 
-        // create user in Supabase auth
-        const { data, error } = await supabase.auth.admin.createUser({
+        // Verify if username already exists
+        const { data: existingUser, error: checkError } = await supabase
+            .from("users")
+            .select("id")
+            .eq("username", username)
+            .maybeSingle();
+
+        if (checkError) {
+            console.error("Error checking username:", checkError.message);
+            return NextResponse.json({ error: "Error checking username." }, { status: 500 });
+        }
+
+        if (existingUser) {
+            return NextResponse.json({ error: "Username is already taken." }, { status: 400 });
+        }
+
+        // Create user in Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
             email,
             password,
-            email_confirm: true, // may want to handle confirmation differently later?
+            email_confirm: true,
         });
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+        if (authError || !authData.user) {
+            console.error("Error creating user in Supabase Auth:", authError?.message);
+            return NextResponse.json({ error: authError?.message || "Failed to create user" }, { status: 400 });
         }
 
-        // insert user into "users" table
-        if (data.user) {
-            const { error: dbError } = await supabase
-                .from("users")
-                .insert([{ id: data.user.id, email: data.user.email }]);
+        const userId = authData.user.id;
 
-            if (dbError) {
-                console.error("Error inserting into users table:", dbError.message);
-            }
+        // Insert into users table with username
+        const { error: dbError } = await supabase
+            .from("users")
+            .insert([
+                {
+                    id: userId,
+                    email: authData.user.email,
+                    username,
+                },
+            ]);
+
+        if (dbError) {
+            console.error("Error inserting into users table:", dbError.message);
+            await supabase.auth.admin.deleteUser(userId);
+            return NextResponse.json({ error: "Failed to save username" }, { status: 500 });
         }
 
-        return NextResponse.json({ success: true, user: data.user });
+        return NextResponse.json({ success: true, user: authData.user });
     } catch (err: any) {
-        console.error(err);
+        console.error("Unexpected error:", err);
         return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
     }
 }
+
+

@@ -1,46 +1,43 @@
-import { createClient } from "@supabase/supabase-js";
-import ReplySection from "@/app/components/ReplySection";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { formatDateToLocal } from "@/utils/formatDate";
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import ReplySection from "@/app/components/ReplySection";
 
 export default async function ThreadPage(props: {params: Promise<{ id: string }>;searchParams: Promise<{ page?: string }>;}) {
     const { id: threadId } = await props.params;
     const searchParams = await props.searchParams;
 
-    const session = await getServerSession(authOptions);
     const currentPage = parseInt(searchParams?.page || "1", 10);
-
-    const { data: thread } = await supabase
-        .from("threads")
-        .select("id, title, body, author_id, created_at")
-        .eq("id", threadId)
-        .single();
-
-    if (!thread) return <p>Thread not found</p>;
+    const session = await getServerSession(authOptions);
 
     // Paginated replies
     const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/posts/${threadId}?page=${currentPage}`,
-        { next: { tags: [`posts-${threadId}`] } }
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/threads/${threadId}?page=${currentPage}`,
+        { cache: "no-store" }
     );
 
     if (!res.ok) {
-        return <p className="text-red-600 text-sm">Error loading replies.</p>;
+        return (
+            <p className="text-red-600 text-sm">
+                Error loading thread details.
+            </p>
+        );
     }
 
-    const { posts, totalPages } = await res.json();
+    const thread = await res.json();
+
+    if (!thread) return <p>Thread not found</p>;
 
     return (
         <section className="bg-white shadow rounded-lg p-6">
             <h1 className="text-2xl font-bold mb-2">{thread.title}</h1>
+
             <p className="text-sm text-gray-500 mb-4">
-                by {thread.author_id} on {formatDateToLocal(thread.created_at)}
+                by{" "}
+                <span className="font-medium text-gray-700">
+                    {thread.username || "Unknown"}
+                </span>{" "}
+                on {formatDateToLocal(thread.created_at)}
             </p>
 
             <div className="mb-6 p-3 border rounded bg-gray-50">
@@ -51,12 +48,13 @@ export default async function ThreadPage(props: {params: Promise<{ id: string }>
 
             <ReplySection
                 threadId={thread.id}
-                initialPosts={posts ?? []}
+                initialPosts={thread.posts ?? []}
                 isAuthenticated={!!session}
-                totalPages={totalPages}
+                totalPages={thread.totalPages ?? 1}
                 initialPage={currentPage}
             />
         </section>
     );
 }
+
 

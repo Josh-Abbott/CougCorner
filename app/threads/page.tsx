@@ -4,8 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { formatDateToLocal } from "@/utils/formatDate";
 import Pagination from "@/app/components/Pagination";
 
-export default async function ThreadsPage({searchParams,}: {searchParams?: { page?: string };}) {
-    const page = parseInt(searchParams?.page || "1", 10);
+export default async function ThreadsPage({ searchParams, }: { searchParams?: Promise<{ page?: string }>; }) {
+    const params = await searchParams;
+    const page = parseInt(params?.page || "1", 10);
     const limit = 10;
 
     const session = await getServerSession(authOptions);
@@ -52,12 +53,13 @@ export default async function ThreadsPage({searchParams,}: {searchParams?: { pag
                                 >
                                     <h2 className="text-lg font-semibold">{thread.title}</h2>
                                     <p className="text-sm text-gray-500">
-                                        Created at {formatDateToLocal(thread.created_at)}
+                                        By {thread.username} • Created at {formatDateToLocal(thread.created_at)}
                                     </p>
                                 </Link>
                             </li>
                         ))}
                     </ul>
+
 
                     <Pagination
                         currentPage={page}

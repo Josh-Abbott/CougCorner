@@ -17,18 +17,42 @@ export async function POST(req: Request) {
 
     const { title, content } = await req.json();
 
-    const { data: thread, error } = await supabase
+    // Insert the new thread
+    const { data: insertedThread, error: insertError } = await supabase
         .from("threads")
         .insert([{ title, body: content, author_id: session.user.id }])
-        .select()
+        .select("id, title, body, author_id, created_at")
         .single();
 
-    if (error) {
-        console.error(error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    if (insertError) {
+        console.error("Error inserting thread:", insertError);
+        return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
-    revalidateTag("threads"); // ?
+    // Fetch username for the author
+    const { data: user, error: userError } = await supabase
+        .from("users")
+        .select("username")
+        .eq("id", insertedThread.author_id)
+        .single();
 
-    return NextResponse.json({ id: thread.id });
+    if (userError) {
+        console.error("Error fetching username:", userError);
+        return NextResponse.json({ error: userError.message }, { status: 500 });
+    }
+
+    revalidateTag("threads");
+
+    // Return all of the stuff
+    return NextResponse.json({
+        thread: {
+            id: insertedThread.id,
+            title: insertedThread.title,
+            body: insertedThread.body,
+            created_at: insertedThread.created_at,
+            author_id: insertedThread.author_id,
+            username: user.username,
+        },
+    });
 }
+

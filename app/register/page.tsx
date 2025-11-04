@@ -4,6 +4,7 @@ import { useState } from "react";
 function RegisterPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [username, setUsername] = useState("");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
 
@@ -12,11 +13,17 @@ function RegisterPage() {
         setLoading(true);
         setMessage("");
 
+        if (!username.trim()) {
+            setMessage("Username is required.");
+            setLoading(false);
+            return;
+        }
+
         try {
             const res = await fetch("/api/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email, password, username }),
             });
 
             const data = await res.json();
@@ -25,6 +32,9 @@ function RegisterPage() {
                 setMessage(data.error || "Failed to register");
             } else {
                 setMessage("Account created! You can now log in.");
+                setEmail("");
+                setPassword("");
+                setUsername("");
             }
         } catch (err) {
             setMessage("Something went wrong.");
@@ -37,6 +47,13 @@ function RegisterPage() {
         <section className="p-6 bg-white shadow rounded max-w-md mx-auto">
             <h1 className="text-xl font-bold mb-4">Register</h1>
             <form onSubmit={handleRegister} className="space-y-4">
+                <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Username"
+                    className="w-full border p-2 rounded"
+                />
                 <input
                     type="email"
                     value={email}
@@ -64,4 +81,4 @@ function RegisterPage() {
     );
 }
 
-export default RegisterPage
+export default RegisterPage;

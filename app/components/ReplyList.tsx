@@ -1,28 +1,32 @@
 "use client";
 
+import { formatDateToLocal } from "@/utils/formatDate";
 import type { Post } from "@/types/forum";
 
-export default function ReplyList({ posts }: { posts: Post[] }) {
-    if (!posts.length)
-        return <p className="text-gray-500 text-sm">No replies yet.</p>;
+interface ReplyListProps {
+    posts: Post[];
+}
 
-        const formatDate = (dateString: string) => {
-            const date = new Date(
-            dateString.endsWith("Z") ? dateString : dateString + "Z"
-        );
-        return date.toLocaleString();
-    };
+export default function ReplyList({ posts }: ReplyListProps) {
+    if (!posts || posts.length === 0) {
+        return <p className="text-gray-500 text-sm">No replies yet.</p>;
+    }
 
     return (
-        <div className="space-y-3 mb-6">
+        <ul className="space-y-3">
             {posts.map((post) => (
-            <div key={post.id} className="border rounded p-3">
-                <p className="text-gray-800 whitespace-pre-wrap">{post.content}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                    by {post.author_id} on {formatDate(post.created_at)}
-                </p>
-            </div>
+                <li key={post.id} className="p-3 border rounded bg-gray-50">
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{post.content}</p>
+
+                    <p className="text-xs text-gray-500 mt-2">
+                        by{" "}
+                        <span className="font-medium text-gray-700">
+                            {post.username || "Unknown"}
+                        </span>{" "}
+                        on {formatDateToLocal(post.created_at)}
+                    </p>
+                </li>
             ))}
-        </div>
+        </ul>
     );
 }

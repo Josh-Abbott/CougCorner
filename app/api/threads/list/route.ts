@@ -14,9 +14,16 @@ export async function GET(req: Request) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
+    // Join with users to get the username for each thread
     const { data: threads, error, count } = await supabase
         .from("threads")
-        .select("id, title, created_at", { count: "exact" }) // total count for pagination, exact
+        .select(`
+            id,
+            title,
+            created_at,
+            author_id,
+            users!inner(username)
+        `, { count: "exact" }) // total count for pagination, exact
         .order("created_at", { ascending: false })
         .range(from, to);
 
@@ -25,11 +32,21 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Map threads to include username at top level
+    const formattedThreads = threads.map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        created_at: t.created_at,
+        author_id: t.author_id,
+        username: t.users.username,
+    }));
+
     return NextResponse.json({
-        threads,
+        threads: formattedThreads,
         total: count,
         page,
         limit,
     });
 }
+
 
