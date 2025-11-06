@@ -10,31 +10,44 @@ const supabase = createClient(
 );
 
 export async function POST(req: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json(
+                { error: "You must be signed in to post a reply." },
+                { status: 401 }
+            );
+        }
 
-    const { thread_id, content } = await req.json();
-    if (!thread_id || !content) {
+        const { thread_id, content } = await req.json();
+        if (!thread_id || !content?.trim()) {
+            return NextResponse.json(
+                { error: "Missing or invalid thread ID or content." },
+                { status: 400 }
+            );
+        }
+
+        const { data, error } = await supabase
+            .from("posts")
+            .insert([{ thread_id, author_id: session.user.id, content }])
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Error inserting reply:", error);
+            return NextResponse.json(
+                { error: "Database insert failed: " + error.message },
+                { status: 500 }
+            );
+        }
+
+        revalidateTag(`posts-${thread_id}`);
+        return NextResponse.json(data);
+    } catch (err) {
+        console.error("Unexpected error in POST /api/posts:", err);
         return NextResponse.json(
-            { error: "Missing thread_id or content" },
-            { status: 400 }
+            { error: "Unexpected server error." },
+            { status: 500 }
         );
     }
-
-    const { data, error } = await supabase
-        .from("posts")
-        .insert([{ thread_id, author_id: session.user.id, content }])
-        .select()
-        .single();
-
-    if (error) {
-        console.error(error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    revalidateTag(`posts-${thread_id}`);
-
-    return NextResponse.json(data);
 }

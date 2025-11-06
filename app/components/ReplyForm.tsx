@@ -1,16 +1,32 @@
 "use client";
 
 import { useState } from "react";
+import StatusMessage from "@/app/components/StatusMessage";
 
-export default function ReplyForm({threadId,onReplyPosted,}: {threadId: string;onReplyPosted?: () => void;}) {
+export default function ReplyForm({
+    threadId,
+    onReplyPosted,
+}: {
+    threadId: string;
+    onReplyPosted?: () => void;
+}) {
     const [content, setContent] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [status, setStatus] = useState<{ success: boolean; message: string }>({
+        success: false,
+        message: "",
+    });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!content.trim()) return;
+        if (!content.trim()) {
+            setStatus({ success: false, message: "Reply content cannot be empty." });
+            return;
+        }
 
         setSubmitting(true);
+        setStatus({ success: false, message: "" }); // clear
+
         try {
             const res = await fetch("/api/posts", {
                 method: "POST",
@@ -18,14 +34,24 @@ export default function ReplyForm({threadId,onReplyPosted,}: {threadId: string;o
                 body: JSON.stringify({ thread_id: threadId, content }),
             });
 
-            if (!res.ok) throw new Error("Failed to post reply");
+            const data = await res.json();
 
-            // success → trigger a refresh via parent
+            if (!res.ok) {
+                if (res.status === 401) {
+                    setStatus({ success: false, message: "You must be signed in to post a reply." });
+                } else if (res.status === 400) {
+                    setStatus({ success: false, message: data.error || "Invalid request. Please check your input." });
+                } else {
+                    setStatus({ success: false, message: data.error || "Failed to post reply. Please try again." });
+                }
+                return;
+            }
+
             onReplyPosted?.();
             setContent("");
         } catch (err) {
-            console.error(err);
-            alert("Failed to post reply.");
+            console.error("Unexpected error posting reply:", err);
+            setStatus({ success: false, message: "Something went wrong while posting your reply." });
         } finally {
             setSubmitting(false);
         }
@@ -47,7 +73,8 @@ export default function ReplyForm({threadId,onReplyPosted,}: {threadId: string;o
             >
                 {submitting ? "Posting..." : "Reply"}
             </button>
+
+            <StatusMessage success={status.success} message={status.message} />
         </form>
     );
 }
-

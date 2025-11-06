@@ -12,10 +12,20 @@ const supabase = createClient(
 export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json(
+            { success: false, message: "You must be signed in to create a thread." },
+            { status: 401 }
+        );
     }
 
     const { title, content } = await req.json();
+
+    if (!title?.trim() || !content?.trim()) {
+        return NextResponse.json(
+            { success: false, message: "Both title and content are required." },
+            { status: 400 }
+        );
+    }
 
     // Insert the new thread
     const { data: insertedThread, error: insertError } = await supabase
@@ -26,7 +36,10 @@ export async function POST(req: Request) {
 
     if (insertError) {
         console.error("Error inserting thread:", insertError);
-        return NextResponse.json({ error: insertError.message }, { status: 500 });
+        return NextResponse.json(
+            { success: false, message: "Failed to create thread. Please try again." },
+            { status: 500 }
+        );
     }
 
     // Fetch username for the author
@@ -38,13 +51,18 @@ export async function POST(req: Request) {
 
     if (userError) {
         console.error("Error fetching username:", userError);
-        return NextResponse.json({ error: userError.message }, { status: 500 });
+        return NextResponse.json(
+            { success: false, message: "Thread created, but failed to fetch user info." },
+            { status: 500 }
+        );
     }
 
     revalidateTag("threads");
 
     // Return all of the stuff
     return NextResponse.json({
+        success: true,
+        message: "Thread created successfully!",
         thread: {
             id: insertedThread.id,
             title: insertedThread.title,

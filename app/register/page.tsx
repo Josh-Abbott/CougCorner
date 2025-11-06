@@ -1,20 +1,36 @@
 "use client";
 import { useState } from "react";
 
-function RegisterPage() {
+import StatusMessage from "@/app/components/StatusMessage";
+
+export default function RegisterPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [username, setUsername] = useState("");
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState("");
+    const [status, setStatus] = useState<{ success: boolean; message: string }>({
+        success: true,
+        message: "",
+    });
 
     async function handleRegister(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
-        setMessage("");
+        setStatus({ success: true, message: "" });
 
+        // Inline validation before sending request
         if (!username.trim()) {
-            setMessage("Username is required.");
+            setStatus({ success: false, message: "Username is required." });
+            setLoading(false);
+            return;
+        }
+        if (!email.includes("@")) {
+            setStatus({ success: false, message: "Please enter a valid email address." });
+            setLoading(false);
+            return;
+        }
+        if (password.length < 6) {
+            setStatus({ success: false, message: "Password must be at least 6 characters long." });
             setLoading(false);
             return;
         }
@@ -28,23 +44,28 @@ function RegisterPage() {
 
             const data = await res.json();
 
-            if (!res.ok) {
-                setMessage(data.error || "Failed to register");
+            if (!data.success) {
+                setStatus({ success: false, message: "Failed to register." });
             } else {
-                setMessage("Account created! You can now log in.");
+                setStatus({ success: true, message: "Account created! Redirecting to login..." });
                 setEmail("");
                 setPassword("");
                 setUsername("");
+
+                // Redirect to login after 2 seconds
+                setTimeout(() => {
+                    window.location.href = "/login";
+                }, 2000);
             }
         } catch (err) {
-            setMessage("Something went wrong.");
+            setStatus({ success: false, message: "Something went wrong. Please try again." });
         } finally {
             setLoading(false);
         }
     }
 
     return (
-        <section className="p-6 bg-white shadow rounded max-w-md mx-auto">
+        <section className="p-6 bg-white shadow rounded max-w-md mx-auto mt-10">
             <h1 className="text-xl font-bold mb-4">Register</h1>
             <form onSubmit={handleRegister} className="space-y-4">
                 <input
@@ -71,14 +92,16 @@ function RegisterPage() {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+                    className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:opacity-50"
                 >
                     {loading ? "Registering..." : "Register"}
                 </button>
             </form>
-            {message && <p className="mt-4 text-sm">{message}</p>}
+
+            <div className="mt-4">
+                <StatusMessage success={status.success} message={status.message} />
+            </div>
         </section>
     );
 }
 
-export default RegisterPage;
