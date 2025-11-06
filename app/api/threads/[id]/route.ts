@@ -6,25 +6,25 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-    const threadId = params.id;
+export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
+    const { id: threadId } = await context.params;
 
     // Fetch the thread and its posts
     const { data: thread, error: threadError } = await supabase
         .from("threads")
         .select(`
-      id,
-      title,
-      body,
-      author_id,
-      created_at,
-      posts (
-        id,
-        content,
-        author_id,
-        created_at
-      )
-    `)
+            id,
+            title,
+            body,
+            author_id,
+            created_at,
+            posts (
+                id,
+                content,
+                author_id,
+                created_at
+            )
+        `)
         .eq("id", threadId)
         .single();
 
@@ -46,7 +46,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
     // Fetch all post authors' usernames
     const postAuthorIds = [...new Set(thread.posts.map((p: any) => p.author_id))];
-
     const { data: postAuthors, error: postAuthorsError } = await supabase
         .from("users")
         .select("id, username")
@@ -65,7 +64,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         username: authorMap[p.author_id] || "Unknown",
     }));
 
-    // Return all of the stuff 
+    // Return all of the stuff
     return NextResponse.json({
         ...thread,
         username: threadAuthor?.username || "Unknown",
